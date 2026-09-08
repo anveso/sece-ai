@@ -41,3 +41,18 @@ def init_db() -> None:
         conn.commit()
 
     Base.metadata.create_all(bind=engine)
+
+    # create_all only creates missing TABLES, not missing COLUMNS on tables
+    # that already exist (e.g. on a database that was already deployed
+    # before this column was added). Postgres supports IF NOT EXISTS on
+    # ADD COLUMN directly, so this is safe to run every startup - a real
+    # migration tool (Alembic) should replace this once the schema needs
+    # more than a couple of these. See README roadmap.
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE documents "
+                "ADD COLUMN IF NOT EXISTS is_shared BOOLEAN NOT NULL DEFAULT FALSE"
+            )
+        )
+        conn.commit()
