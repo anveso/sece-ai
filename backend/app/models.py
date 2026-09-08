@@ -99,6 +99,10 @@ class Document(Base):
     content_type = Column(String, nullable=True)
     status = Column(String, default="processing", nullable=False)  # processing|ready|error
     error_message = Column(Text, nullable=True)
+    # Shared documents (institutional knowledge base, e.g. sece.ac.in content)
+    # are searchable by every user, not just the owner - see
+    # rag/retriever.py's owner_id OR is_shared filter.
+    is_shared = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     owner = relationship("User", back_populates="documents")
