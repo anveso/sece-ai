@@ -11,6 +11,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY frontend/. .
+RUN mkdir -p public
 # NEXT_PUBLIC_* variables are baked into the client JS bundle at build time,
 # not read at runtime - so this has to arrive as a build ARG, not just a
 # runtime env var. On Render, envVars set on a Docker-runtime service are
