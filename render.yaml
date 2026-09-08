@@ -1,0 +1,81 @@
+# Render Blueprint for SECE AI.
+#
+# Deploy: push this repo to GitHub, then in the Render dashboard choose
+# "New +" -> "Blueprint" and point it at the repo. Render reads this file
+# and creates all three resources below in one go. See RENDER_DEPLOY.md for
+# the full walkthrough, the one manual step this file can't do for you
+# (enabling the pgvector extension), and what to check if a URL doesn't
+# match the guesses baked in below.
+#
+# NOTE on the two onrender.com URLs referenced below (CORS_ORIGINS on the
+# backend, NEXT_PUBLIC_API_BASE_URL on the frontend): Render service URLs
+# follow https://<service-name>.onrender.com, so these are predictable from
+# the `name` fields here - but only if that exact name isn't already taken
+# by someone else on Render. If your deployed URLs come back different from
+# what's hardcoded here, update these two values in the Render dashboard and
+# manually redeploy the frontend (NEXT_PUBLIC_API_BASE_URL is baked into the
+# JS bundle at build time, so changing the env var alone isn't enough).
+
+databases:
+  - name: sece-ai-db
+    plan: free
+    region: oregon
+    databaseName: sece_ai
+    user: sece
+
+services:
+  - type: web
+    name: sece-ai-backend
+    runtime: docker
+    plan: free
+    region: oregon
+    # Context is the REPO ROOT, not ./backend - backend/Dockerfile's COPY
+    # paths (`backend/requirements.txt`, `backend/app`) expect that. A
+    # dockerContext pointed directly at the subdirectory failed to build
+    # ("open Dockerfile: no such file or directory") - this repo-root +
+    # dockerfilePath-into-subdirectory pattern is what Render's own
+    # multi-service Docker examples actually use.
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sece-ai-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CHAT_MODEL
+        value: gpt-4o-mini
+      - key: EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: EMBEDDING_DIM
+        value: "1536"
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: CORS_ORIGINS
+        value: https://sece-ai-frontend.onrender.com
+      - key: APP_NAME
+        value: SECE AI
+      - key: ENVIRONMENT
+        value: production
+
+  - type: web
+    name: sece-ai-frontend
+    runtime: docker
+    plan: free
+    region: oregon
+    # Same repo-root-context reasoning as the backend service above.
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://sece-ai-backend.onrender.com

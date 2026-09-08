@@ -1,0 +1,57 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sece}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sece_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-sece_ai}
+    ports:
+      - "5432:5432"
+    volumes:
+      - sece_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sece}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      # Repo root context, not ./backend - matches the Dockerfile's
+      # `COPY backend/...` paths. See backend/Dockerfile's header comment.
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-sece}:${POSTGRES_PASSWORD:-sece_dev_password}@db:5432/${POSTGRES_DB:-sece_ai}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - sece_uploads:/data/uploads
+
+  frontend:
+    build:
+      # Repo root context, not ./frontend - matches the Dockerfile's
+      # `COPY frontend/...` paths. See frontend/Dockerfile's header comment.
+      context: .
+      dockerfile: frontend/Dockerfile
+      # NEXT_PUBLIC_* vars are baked into the client bundle at build time,
+      # not read at container startup - so this must be a build arg, not a
+      # runtime `environment:` entry.
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  sece_db_data:
+  sece_uploads:
