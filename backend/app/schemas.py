@@ -86,6 +86,7 @@ class DocumentOut(BaseModel):
     content_type: Optional[str]
     status: str
     error_message: Optional[str] = None
+    is_shared: bool = False
     created_at: datetime
 
     class Config:
