@@ -13,6 +13,7 @@ export default function FileUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shared, setShared] = useState(false);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -20,7 +21,7 @@ export default function FileUpload({
     setError(null);
     try {
       for (const file of Array.from(files)) {
-        const doc = await uploadDocument(file);
+        const doc = await uploadDocument(file, shared);
         onUploaded(doc);
       }
     } catch (err: any) {
@@ -54,6 +55,16 @@ export default function FileUpload({
         />
       </div>
 
+      <label className="flex items-center gap-1.5 mb-2 text-xs text-slate-500">
+        <input
+          type="checkbox"
+          checked={shared}
+          onChange={(e) => setShared(e.target.checked)}
+          className="rounded border-slate-300"
+        />
+        Add to shared knowledge base (visible to everyone, faculty/admin only)
+      </label>
+
       {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
 
       <ul className="space-y-1 max-h-40 overflow-y-auto">
@@ -68,7 +79,10 @@ export default function FileUpload({
             className="text-xs text-slate-600 flex items-center justify-between gap-2"
             title={doc.error_message || undefined}
           >
-            <span className="truncate">{doc.filename}</span>
+            <span className="truncate">
+              {doc.filename}
+              {doc.is_shared && " 🌐"}
+            </span>
             <span
               className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                 doc.status === "ready"
