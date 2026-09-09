@@ -7,7 +7,18 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from .config import settings
 
-engine = create_engine(settings.database_url, pool_pre_ping=True)
+# connect_timeout is the important part here: without it, a bad/unreachable
+# DATABASE_URL (wrong host, DB not ready yet, network issue) makes psycopg2
+# hang on the TCP connect with NO error for minutes - which on Render looks
+# like "the app never opens its port" with no useful log at all, since the
+# startup event (init_db(), below) never returns. 10s means a real
+# connection problem now fails fast with an actual traceback in the logs
+# instead of a silent hang.
+engine = create_engine(
+    settings.database_url,
+    pool_pre_ping=True,
+    connect_args={"connect_timeout": 10},
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -36,10 +47,17 @@ def init_db() -> None:
     # Import models so they're registered on Base.metadata before create_all.
     from . import models  # noqa: F401
 
+    # Plain print(), not logging - guaranteed to show up in Render's log
+    # stream with no extra config, and this is exactly the sequence you want
+    # visible if startup ever hangs or fails again: which of these three
+    # steps it got stuck/failed on.
+    print("init_db: connecting to database...", flush=True)
     with engine.connect() as conn:
+        print("init_db: connected. Ensuring pgvector extension...", flush=True)
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         conn.commit()
 
+    print("init_db: creating tables...", flush=True)
     Base.metadata.create_all(bind=engine)
 
     # create_all only creates missing TABLES, not missing COLUMNS on tables
@@ -56,3 +74,4 @@ def init_db() -> None:
             )
         )
         conn.commit()
+    print("init_db: done.", flush=True)
