@@ -11,19 +11,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Set after a successful registration - shown instead of navigating to
+  // /chat, since a brand-new account has no usable session until an admin
+  // approves it (see backend/app/routers/auth.py).
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setPendingMessage(null);
     setLoading(true);
     try {
       if (mode === "login") {
         await login(email, password);
+        router.push("/chat");
       } else {
-        await register(email, password, fullName);
+        const result = await register(email, password, fullName);
+        setPendingMessage(result.message);
+        setMode("login");
+        setPassword("");
       }
-      router.push("/chat");
     } catch (err: any) {
       setError(err.message || "Something went wrong");
     } finally {
@@ -52,7 +60,10 @@ export default function LoginPage() {
                   ? "bg-white shadow-sm text-slate-900"
                   : "text-slate-500"
               }`}
-              onClick={() => setMode("login")}
+              onClick={() => {
+                setMode("login");
+                setError(null);
+              }}
               type="button"
             >
               Sign in
@@ -63,12 +74,22 @@ export default function LoginPage() {
                   ? "bg-white shadow-sm text-slate-900"
                   : "text-slate-500"
               }`}
-              onClick={() => setMode("register")}
+              onClick={() => {
+                setMode("register");
+                setError(null);
+                setPendingMessage(null);
+              }}
               type="button"
             >
               Create account
             </button>
           </div>
+
+          {pendingMessage && (
+            <p className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+              {pendingMessage}
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "register" && (

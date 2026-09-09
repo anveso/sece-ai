@@ -32,6 +32,18 @@ export interface User {
   email: string;
   full_name: string | null;
   role: string;
+  is_approved: boolean;
+  created_at: string;
+}
+
+export interface AdminUser extends User {
+  conversation_count: number;
+  message_count: number;
+  last_active: string | null;
+}
+
+export interface AdminDocumentItem extends DocumentItem {
+  owner_email: string;
 }
 
 export interface Conversation {
@@ -67,6 +79,20 @@ export interface AgentInfo {
   group: string;
 }
 
+// Extracts FastAPI's {"detail": "..."} message from an error response body,
+// falling back to the raw text if it's not JSON-shaped - used by login/
+// register so the UI can show the real reason (e.g. "pending admin
+// approval") instead of a generic failure message.
+async function errorDetail(res: Response, fallback: string): Promise<string> {
+  const text = await res.text();
+  try {
+    const parsed = JSON.parse(text);
+    return parsed.detail || fallback;
+  } catch {
+    return text || fallback;
+  }
+}
+
 export async function login(email: string, password: string) {
   const form = new URLSearchParams();
   form.set("username", email);
@@ -77,12 +103,17 @@ export async function login(email: string, password: string) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: form.toString(),
   });
-  if (!res.ok) throw new Error("Invalid email or password");
+  if (!res.ok) throw new Error(await errorDetail(res, "Invalid email or password"));
   const data = await res.json();
   setToken(data.access_token);
   return data.user as User;
 }
 
+// Self-service registration no longer logs the account in - new accounts
+// need admin approval first (see backend/app/routers/auth.py), so there's
+// no valid session to hand back yet. Returns the server's message plus the
+// created user record; the caller (login/page.tsx) shows the message
+// instead of navigating to /chat.
 export async function register(email: string, password: string, full_name: string) {
   // No role field here on purpose - self-service registration always
   // creates a "student" account server-side regardless of what's sent
@@ -93,10 +124,9 @@ export async function register(email: string, password: string, full_name: strin
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, full_name }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error(await errorDetail(res, "Registration failed"));
   const data = await res.json();
-  setToken(data.access_token);
-  return data.user as User;
+  return data as { message: string; user: User };
 }
 
 export async function fetchMe(): Promise<User> {
@@ -209,4 +239,38 @@ export async function streamChat(
       if (event === "done") onDone(activeConversationId);
     }
   }
+}
+
+// --- Admin (all 403 server-side for non-admin accounts, see
+// backend/app/routers/admin.py's require_admin) ---
+
+export async function adminListUsers(): Promise<AdminUser[]> {
+  const res = await authFetch("/admin/users");
+  return res.json();
+}
+
+export async function adminApproveUser(userId: string): Promise<AdminUser> {
+  const res = await authFetch(`/admin/users/${userId}/approve`, { method: "POST" });
+  return res.json();
+}
+
+export async function adminSetUserRole(
+  userId: string,
+  role: string
+): Promise<AdminUser> {
+  const res = await authFetch(`/admin/users/${userId}/role`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  });
+  return res.json();
+}
+
+export async function adminDeleteUser(userId: string) {
+  await authFetch(`/admin/users/${userId}`, { method: "DELETE" });
+}
+
+export async function adminListDocuments(): Promise<AdminDocumentItem[]> {
+  const res = await authFetch("/admin/documents");
+  return res.json();
 }

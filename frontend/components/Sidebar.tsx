@@ -78,6 +78,17 @@ export default function Sidebar({
         canShare={user?.role === "admin"}
       />
 
+      {user?.role === "admin" && (
+        <div className="px-3 pt-3">
+          <button
+            onClick={() => router.push("/admin")}
+            className="w-full rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-medium py-2 transition text-slate-700"
+          >
+            Admin Panel
+          </button>
+        </div>
+      )}
+
       <div className="p-3 border-t border-slate-200 flex items-center justify-between">
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">
