@@ -72,7 +72,11 @@ export default function Sidebar({
         )}
       </div>
 
-      <FileUpload documents={documents} onUploaded={onDocumentUploaded} />
+      <FileUpload
+        documents={documents}
+        onUploaded={onDocumentUploaded}
+        canShare={user?.role === "admin"}
+      />
 
       <div className="p-3 border-t border-slate-200 flex items-center justify-between">
         <div className="min-w-0">

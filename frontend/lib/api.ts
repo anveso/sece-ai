@@ -64,6 +64,7 @@ export interface AgentInfo {
   key: string;
   name: string;
   description: string;
+  group: string;
 }
 
 export async function login(email: string, password: string) {
@@ -82,16 +83,15 @@ export async function login(email: string, password: string) {
   return data.user as User;
 }
 
-export async function register(
-  email: string,
-  password: string,
-  full_name: string,
-  role: string
-) {
+export async function register(email: string, password: string, full_name: string) {
+  // No role field here on purpose - self-service registration always
+  // creates a "student" account server-side regardless of what's sent
+  // (see backend/app/routers/auth.py). Admin accounts are promoted
+  // manually, never picked at signup.
   const res = await fetch(`${API_BASE_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, full_name, role }),
+    body: JSON.stringify({ email, password, full_name }),
   });
   if (!res.ok) throw new Error(await res.text());
   const data = await res.json();

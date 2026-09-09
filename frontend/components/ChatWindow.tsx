@@ -110,10 +110,16 @@ export default function ChatWindow({
             onChange={(e) => onAgentChange(e.target.value)}
             className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
-            {agents.map((a) => (
-              <option key={a.key} value={a.key}>
-                {a.name}
-              </option>
+            {Array.from(new Set(agents.map((a) => a.group))).map((group) => (
+              <optgroup key={group} label={group}>
+                {agents
+                  .filter((a) => a.group === group)
+                  .map((a) => (
+                    <option key={a.key} value={a.key}>
+                      {a.name}
+                    </option>
+                  ))}
+              </optgroup>
             ))}
           </select>
         ) : (

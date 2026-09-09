@@ -6,9 +6,14 @@ import { DocumentItem, uploadDocument } from "@/lib/api";
 export default function FileUpload({
   documents,
   onUploaded,
+  canShare,
 }: {
   documents: DocumentItem[];
   onUploaded: (doc: DocumentItem) => void;
+  // Only admin accounts can add to the shared institutional knowledge base
+  // (enforced server-side in routers/documents.py too - this just keeps the
+  // checkbox from showing to accounts that would get a 403 for using it).
+  canShare: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -55,15 +60,17 @@ export default function FileUpload({
         />
       </div>
 
-      <label className="flex items-center gap-1.5 mb-2 text-xs text-slate-500">
-        <input
-          type="checkbox"
-          checked={shared}
-          onChange={(e) => setShared(e.target.checked)}
-          className="rounded border-slate-300"
-        />
-        Add to shared knowledge base (visible to everyone, faculty/admin only)
-      </label>
+      {canShare && (
+        <label className="flex items-center gap-1.5 mb-2 text-xs text-slate-500">
+          <input
+            type="checkbox"
+            checked={shared}
+            onChange={(e) => setShared(e.target.checked)}
+            className="rounded border-slate-300"
+          />
+          Add to shared knowledge base (visible to everyone)
+        </label>
+      )}
 
       {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
 
