@@ -116,6 +116,33 @@ and check the URL shown at the top against what's in `render.yaml`
 Open the frontend's URL in a browser — same app, same steps as local:
 create an account, upload a document, chat.
 
+### 6. Promote your first account to admin (one-off SQL, then use the UI)
+
+Everyone who registers gets a normal "student" account that's **pending
+approval** until an admin approves it — there's no self-service way to
+become admin, and a brand-new account can't sign in until it's approved.
+That's exactly the chicken-and-egg problem this step solves: the very
+first admin account has to be created by hand, once, via SQL. After that,
+everything else (approving new signups, promoting/demoting roles, deleting
+users, managing the shared knowledge base) is done from the **Admin
+Panel** in the app itself — see the README's "Roles, account approval &
+the Admin Panel" section.
+
+To bootstrap your first admin account:
+
+1. Register a normal account in the app first (email + password) — it'll
+   say it's pending approval, which is expected.
+2. Render dashboard → your database → **Connect** tab → copy the **PSQL
+   Command**.
+3. Run it in a terminal — you're now in a `psql` prompt.
+4. Run:
+   ```sql
+   UPDATE users SET role = 'admin', is_approved = true WHERE email = 'someone@example.com';
+   ```
+5. `\q` to exit. That account can now sign in, and sees an "Admin Panel"
+   button in the sidebar — use it from here on for approvals, roles, and
+   the shared knowledge base instead of more SQL.
+
 ---
 
 ## Things to know about Render's free tier
