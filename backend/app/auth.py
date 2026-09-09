@@ -51,6 +51,12 @@ credentials_exception = HTTPException(
 )
 
 
+pending_approval_exception = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN,
+    detail="Your account is pending admin approval.",
+)
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> User:
@@ -58,4 +64,12 @@ def get_current_user(
     user = db.get(User, UUID(user_id))
     if user is None or not user.is_active:
         raise credentials_exception
+    # Checked on every request, not just at login, so revoking approval on an
+    # already-logged-in account takes effect immediately rather than only
+    # once their token expires. Admin accounts always pass this check - only
+    # someone with direct database access can grant the admin role in the
+    # first place (see routers/auth.py's register()), so that's already a
+    # stronger gate than self-service approval.
+    if not user.is_approved and user.role != "admin":
+        raise pending_approval_exception
     return user

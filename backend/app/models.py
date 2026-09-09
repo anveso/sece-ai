@@ -40,6 +40,12 @@ class User(Base):
     full_name = Column(String, nullable=True)
     role = Column(String, default="student", nullable=False)  # student|faculty|admin
     is_active = Column(Boolean, default=True, nullable=False)
+    # New self-registrations start unapproved and can't log in until an
+    # admin approves them (see routers/auth.py::login and routers/admin.py).
+    # Accounts that existed before this column was added were backfilled to
+    # TRUE by the database.py migration, so nobody already using the app
+    # gets locked out - only new signups from here on need approval.
+    is_approved = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     conversations = relationship(

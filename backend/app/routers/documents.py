@@ -88,11 +88,15 @@ def delete_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    document = (
-        db.query(Document)
-        .filter(Document.id == document_id, Document.owner_id == current_user.id)
-        .first()
-    )
+    # Admins can delete ANY document (their own, another user's private
+    # upload, or a shared one) - needed for knowledge-base moderation, e.g.
+    # removing an outdated shared doc someone else added, or a personal
+    # upload that shouldn't be there. Everyone else can only delete their
+    # own.
+    query = db.query(Document).filter(Document.id == document_id)
+    if current_user.role != "admin":
+        query = query.filter(Document.owner_id == current_user.id)
+    document = query.first()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     db.delete(document)

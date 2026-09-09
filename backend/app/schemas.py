@@ -19,15 +19,33 @@ class UserOut(BaseModel):
     email: EmailStr
     full_name: Optional[str]
     role: str
+    is_approved: bool = False
+    created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class RegisterOut(BaseModel):
+    message: str
+    user: UserOut
 
 
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+# --- Admin ---
+class AdminUserOut(UserOut):
+    conversation_count: int = 0
+    message_count: int = 0
+    last_active: Optional[datetime] = None
+
+
+class AdminSetRole(BaseModel):
+    role: str  # student|faculty|admin
 
 
 # --- Agents ---
@@ -92,3 +110,9 @@ class DocumentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AdminDocumentOut(DocumentOut):
+    # Admin's document-management view spans every user's documents, not
+    # just the caller's own - this is what identifies whose it is.
+    owner_email: str
