@@ -16,16 +16,23 @@ from ..rag.retriever import retrieve_relevant_chunks
 def build_tools(db: Session, user_id: UUID):
     @tool
     def search_documents(query: str) -> str:
-        """Search the current user's uploaded institutional documents
-        (syllabi, circulars, policies, papers, etc.) for passages relevant
-        to the query. Returns the most relevant excerpts with their source
-        filenames, or a message saying nothing was found."""
+        """Search institutional documents for passages relevant to the
+        query: both the current user's own uploads AND the shared
+        institutional knowledge base (official documents added by a
+        verified admin - college policies, syllabi, circulars, content from
+        sece.ac.in). Each result is labeled "Official/shared source" or
+        "User's own upload" so you know how authoritative it is. Returns the
+        most relevant excerpts with their source filenames, or a message
+        saying nothing was found."""
         chunks = retrieve_relevant_chunks(db, user_id, query, top_k=5)
         if not chunks:
             return "No relevant passages found in the user's uploaded documents."
 
+        def _label(c):
+            return "Official/shared source" if c["is_shared"] else "User's own upload"
+
         formatted = "\n\n".join(
-            f"[Source: {c['filename']}]\n{c['content']}" for c in chunks
+            f"[{_label(c)}: {c['filename']}]\n{c['content']}" for c in chunks
         )
         return formatted
 

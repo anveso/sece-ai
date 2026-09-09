@@ -15,8 +15,9 @@ def list_agents(current_user: User = Depends(get_current_user)):
         key="auto",
         name="Auto",
         description="Automatically route each message to the best specialist agent.",
+        group="General",
     )
     return [auto] + [
-        AgentOut(key=s.key, name=s.name, description=s.description)
+        AgentOut(key=s.key, name=s.name, description=s.description, group=s.group)
         for s in AGENT_REGISTRY.values()
     ]

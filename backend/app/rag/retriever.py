@@ -13,6 +13,7 @@ class RetrievedChunk(TypedDict):
     filename: str
     content: str
     distance: float
+    is_shared: bool
 
 
 def retrieve_relevant_chunks(
@@ -25,10 +26,14 @@ def retrieve_relevant_chunks(
             DocumentChunk.content,
             DocumentChunk.document_id,
             Document.filename,
+            Document.is_shared,
             DocumentChunk.embedding.cosine_distance(query_vector).label("distance"),
         )
         .join(Document, Document.id == DocumentChunk.document_id)
-        .filter(Document.owner_id == user_id, Document.status == "ready")
+        .filter(
+            (Document.owner_id == user_id) | (Document.is_shared.is_(True)),
+            Document.status == "ready",
+        )
         .order_by("distance")
         .limit(top_k)
         .all()
@@ -40,6 +45,7 @@ def retrieve_relevant_chunks(
             filename=filename,
             content=content,
             distance=float(distance),
+            is_shared=bool(is_shared),
         )
-        for content, doc_id, filename, distance in results
+        for content, doc_id, filename, is_shared, distance in results
     ]

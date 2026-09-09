@@ -2,7 +2,7 @@
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
@@ -20,6 +20,7 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md", ".csv"}
 @router.post("", response_model=DocumentOut, status_code=201)
 async def upload_document(
     file: UploadFile,
+    shared: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -30,6 +31,18 @@ async def upload_document(
             detail=f"Unsupported file type '{ext}'. Allowed: {sorted(ALLOWED_EXTENSIONS)}",
         )
 
+    # Shared docs land in everyone's search results (see rag/retriever.py),
+    # so only admin accounts can mark an upload as shared - a student or
+    # faculty account's own upload always stays private to them. Admin
+    # accounts are never self-assigned at registration (see routers/auth.py)
+    # - they're promoted manually, so this is a real access boundary, not
+    # just a UI hint.
+    if shared and current_user.role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin accounts can add shared institutional documents.",
+        )
+
     raw = await file.read()
 
     document = Document(
@@ -38,6 +51,7 @@ async def upload_document(
         filename=file.filename,
         content_type=file.content_type,
         status="processing",
+        is_shared=shared,
     )
     db.add(document)
     db.commit()

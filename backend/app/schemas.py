@@ -35,6 +35,7 @@ class AgentOut(BaseModel):
     key: str
     name: str
     description: str
+    group: str = "General"
 
 
 # --- Conversations ---
